@@ -55,8 +55,7 @@ class CustomInfoWindow extends StatefulWidget {
     this.offset = 50,
     this.height = 50,
     this.width = 100,
-  })  : assert(offset >= 0),
-        assert(height >= 0),
+  })  : assert(height >= 0),
         assert(width >= 0);
 
   @override
