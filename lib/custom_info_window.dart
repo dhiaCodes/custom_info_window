@@ -1,6 +1,7 @@
 /// A widget based custom info window for google_maps_flutter package.
 library custom_info_window;
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -8,28 +9,24 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 /// Controller to add, update and control the custom info window.
 class CustomInfoWindowController {
   /// Add custom [Widget] and [Marker]'s [LatLng] to [CustomInfoWindow] and make it visible.
-  /// Offset to maintain space between [Marker] and [CustomInfoWindow].
-  /// Height of [CustomInfoWindow].
-  /// Width of [CustomInfoWindow].
-  Function(Widget, LatLng, double, double, double)? addInfoWindow;
+  Function(Widget, LatLng) addInfoWindow = (child, l) {};
 
   /// Notifies [CustomInfoWindow] to redraw as per change in position.
-  VoidCallback? onCameraMove;
+  VoidCallback onCameraMove = () {};
 
   /// Hides [CustomInfoWindow].
-  VoidCallback? hideInfoWindow;
+  VoidCallback hideInfoWindow = () {};
 
-  /// Shows [CustomInfoWindow].
-  VoidCallback? showInfoWindow;
+  /// Shows cached info window.
+  VoidCallback showCachedInfoWindow = () {};
 
   /// Holds [GoogleMapController] for calculating [CustomInfoWindow] position.
   GoogleMapController? googleMapController;
 
   void dispose() {
-    addInfoWindow = null;
-    onCameraMove = null;
-    hideInfoWindow = null;
-    showInfoWindow = null;
+    addInfoWindow = (child, l) {};
+    onCameraMove = () {};
+    hideInfoWindow = () {};
     googleMapController = null;
   }
 }
@@ -39,108 +36,128 @@ class CustomInfoWindow extends StatefulWidget {
   /// A [CustomInfoWindowController] to manipulate [CustomInfoWindow] state.
   final CustomInfoWindowController controller;
 
-  final Function(double top, double left, double width, double height) onChange;
+  /// Callback to notify the change in position of [CustomInfoWindow].
+  /// The first parameter is the top margin and the second parameter is the left margin.
+  final Function(double, double)? onChange;
 
-  const CustomInfoWindow(
-    this.onChange, {
+  /// Offset to maintain space between [Marker] and [CustomInfoWindow].
+  final double offset;
+
+  /// Height of [CustomInfoWindow].
+  final double height;
+
+  /// Width of [CustomInfoWindow].
+  final double width;
+
+  const CustomInfoWindow({
     required this.controller,
-  });
+    this.onChange,
+    this.offset = 50,
+    this.height = 50,
+    this.width = 100,
+  })  : assert(offset >= 0),
+        assert(height >= 0),
+        assert(width >= 0);
 
   @override
   _CustomInfoWindowState createState() => _CustomInfoWindowState();
 }
 
 class _CustomInfoWindowState extends State<CustomInfoWindow> {
-  bool _showNow = false;
+  bool _showNow = true;
   double _leftMargin = 0;
   double _topMargin = 0;
   Widget? _child;
   LatLng? _latLng;
-  double? _offset;
-  double? _height;
-  double? _width;
 
   @override
   void initState() {
     super.initState();
+    if (Platform.isAndroid) {
+      Future.microtask(() {
+        devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+      });
+    } else {
+      devicePixelRatio = 1.0;
+    }
     widget.controller.addInfoWindow = _addInfoWindow;
     widget.controller.onCameraMove = _onCameraMove;
     widget.controller.hideInfoWindow = _hideInfoWindow;
-    widget.controller.showInfoWindow = _showInfoWindow;
+    widget.controller.showCachedInfoWindow = showCachedInfoWindow;
   }
+
+  late double devicePixelRatio;
 
   /// Calculate the position on [CustomInfoWindow] and redraw on screen.
   void _updateInfoWindow() async {
     if (_latLng == null ||
         _child == null ||
-        _offset == null ||
-        _height == null ||
-        _width == null ||
         widget.controller.googleMapController == null) {
       return;
     }
     ScreenCoordinate screenCoordinate = await widget
         .controller.googleMapController!
         .getScreenCoordinate(_latLng!);
-    double devicePixelRatio =
-        Theme.of(context).platform == TargetPlatform.android ? MediaQuery.of(context).devicePixelRatio : 1.0;
+
     double left =
-        (screenCoordinate.x.toDouble() / devicePixelRatio) - (_width! / 2);
+        (screenCoordinate.x.toDouble() / devicePixelRatio) - (widget.width / 2);
     double top = (screenCoordinate.y.toDouble() / devicePixelRatio) -
-        (_offset! + _height!);
-    setState(() {
-      _showNow = true;
-      _leftMargin = left;
-      _topMargin = top;
-    });
-    widget.onChange.call(top, left, _width!, _height!);
+        (widget.offset + widget.height);
+    // widget.onChange?.call(top, left);
+
+    if (mounted) {
+      setState(() {
+        _leftMargin = left;
+        _topMargin = top;
+      });
+    }
   }
 
   /// Assign the [Widget] and [Marker]'s [LatLng].
-  void _addInfoWindow(Widget child, LatLng latLng, double offset, double height, double width) {
+  void showCachedInfoWindow() {
+    if (mounted) {
+      setState(() {
+        _showNow = true;
+      });
+    }
+  }
+
+  /// Assign the [Widget] and [Marker]'s [LatLng].
+  void _addInfoWindow(Widget child, LatLng latLng) {
     _child = child;
     _latLng = latLng;
-    _offset = offset;
-    _height = height;
-    _width = width;
     _updateInfoWindow();
   }
 
   /// Notifies camera movements on [GoogleMap].
   void _onCameraMove() {
-    if (!_showNow) return;
     _updateInfoWindow();
   }
 
   /// Disables [CustomInfoWindow] visibility.
   void _hideInfoWindow() {
-    setState(() {
-      _showNow = false;
-    });
-  }
-
-  /// Enables [CustomInfoWindow] visibility.
-  void _showInfoWindow() {
-    _updateInfoWindow();
+    if (mounted) {
+      setState(() {
+        _showNow = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_showNow == false ||
+        (_leftMargin == 0 && _topMargin == 0) ||
+        _child == null ||
+        _latLng == null) {
+      return const SizedBox.shrink();
+    }
     return Positioned(
       left: _leftMargin,
       top: _topMargin,
-      child: Visibility(
-        visible: (_showNow == false ||
-                (_leftMargin == 0 && _topMargin == 0) ||
-                _child == null ||
-                _latLng == null)
-            ? false
-            : true,
-        child: Container(
-          child: _child,
-          height: _height,
-          width: _width,
-        ),
+      child: SizedBox(
+        child: _child,
+        height: widget.height,
+        width: widget.width,
       ),
     );
   }

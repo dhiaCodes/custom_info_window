@@ -21,13 +21,13 @@ class MyApp extends StatelessWidget {
 }
 
 class CustomInfoWindowExample extends StatefulWidget {
+  const CustomInfoWindowExample({Key? key}) : super(key: key);
   @override
-  _CustomInfoWindowExampleState createState() =>
-      _CustomInfoWindowExampleState();
+  CustomInfoWindowExampleState createState() => CustomInfoWindowExampleState();
 }
 
-class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
-  CustomInfoWindowController _customInfoWindowController =
+class CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
+  final CustomInfoWindowController _customInfoWindowController =
       CustomInfoWindowController();
 
   final LatLng _latLng = LatLng(28.7041, 77.1025);
@@ -42,7 +42,7 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
     super.dispose();
   }
 
-  Set<Marker> _markers = {};
+  final Set<Marker> _markers = {};
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
         markerId: MarkerId("marker_id"),
         position: _latLng,
         onTap: () {
-          _customInfoWindowController.addInfoWindow!(
+          _customInfoWindowController.addInfoWindow(
             SizedBox(
               height: height,
               width: width,
@@ -63,6 +63,8 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
                         color: Colors.blue,
                         borderRadius: BorderRadius.circular(4),
                       ),
+                      width: double.infinity,
+                      height: double.infinity,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Row(
@@ -78,16 +80,16 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
                             ),
                             Text(
                               "I am here",
-                              style:
-                                  Theme.of(context).textTheme.titleLarge?.copyWith(
-                                        color: Colors.white,
-                                      ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                  ),
                             )
                           ],
                         ),
                       ),
-                      width: double.infinity,
-                      height: double.infinity,
                     ),
                   ),
                   Triangle.isosceles(
@@ -101,7 +103,7 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
                 ],
               ),
             ),
-            _latLng, offset, height, width,
+            _latLng,
           );
         },
       ),
@@ -115,10 +117,10 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
         children: <Widget>[
           GoogleMap(
             onTap: (position) {
-              _customInfoWindowController.hideInfoWindow!();
+              _customInfoWindowController.hideInfoWindow();
             },
             onCameraMove: (position) {
-              _customInfoWindowController.onCameraMove!();
+              _customInfoWindowController.onCameraMove();
             },
             onMapCreated: (GoogleMapController controller) async {
               _customInfoWindowController.googleMapController = controller;
@@ -130,7 +132,7 @@ class _CustomInfoWindowExampleState extends State<CustomInfoWindowExample> {
             ),
           ),
           CustomInfoWindow(
-            (top, left, width, height) => null,
+            onChange: (top, left) => null,
             controller: _customInfoWindowController,
           ),
         ],
